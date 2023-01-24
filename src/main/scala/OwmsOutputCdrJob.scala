@@ -1,7 +1,13 @@
 import java.io.{BufferedReader, InputStreamReader}
 import java.net.Socket
 
-class OwmsOutputCdrJob(jobId: String, priority: String, submitTime: Long, timeout: Long) extends Job(jobId,priority,submitTime,timeout) {
+object OwmsOutputCdrJob {
+  def apply(jobId: String, priority: String, submitTime: Long, timeoutDuration: Long) = {
+    new OwmsOutputCdrJob(JobInfo(jobId, priority, submitTime, timeoutDuration))
+  }
+}
+
+class OwmsOutputCdrJob(jobInfo: JobInfo) extends Job(jobInfo) {
 
   private var conn: Socket = _
   private var in: BufferedReader = _
@@ -12,9 +18,12 @@ class OwmsOutputCdrJob(jobId: String, priority: String, submitTime: Long, timeou
   def process() = {
     conn = new Socket("localhost", 8088)
     in = new BufferedReader(new InputStreamReader(conn.getInputStream))
-    var line: String = null
-    while (status == Job.STATUS_START && (line = in.readLine()) != null && !Thread.currentThread().isInterrupted())
+    var stop: Boolean = false
+    while (status == Job.STATUS_RUNNING && !stop && !Thread.currentThread().isInterrupted()) {
+      val line = in.readLine()
       println(line)
+      if(line == null) stop = true
+    }
   }
 
   override def close(): Unit = {

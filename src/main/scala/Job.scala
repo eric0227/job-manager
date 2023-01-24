@@ -7,24 +7,30 @@ object Job {
   val PRIORITY_LOW = "00"
   val PRIORITY_HIGH = "01"
 
-  val STATUS_SUBMITTED = "01"
-  val STATUS_TAKE = "02"
-  val STATUS_START = "03"
-  val STATUS_CANCELED = "04"
-  val STATUS_END = "05"
-  val STATUS_FAILED = "06"
-  val STATUS_TIMEOUT = "07"
+  val STATUS_SUBMITTED = "SUBMITTED"
+  val STATUS_TAKE = "TAKE"
+  val STATUS_RUNNING = "RUNNING"
+  val STATUS_CANCELED = "CANCELED"
+  val STATUS_SUCCESS = "SUCCESS"
+  val STATUS_FAILED = "FAILED"
+  val STATUS_TIMEOUT = "TIMEOUT"
 }
 
-abstract class Job(val jobId: String, val priority: String, val submitTime: Long, val timeoutDuration: Long) extends Runnable with Closeable {
+case class JobStatus(jobId: String, priority: String, status: String)
+case class JobInfo(jobId: String, priority: String, submitTime: Long, timeoutDuration: Long)
+abstract class Job(val jobInfo: JobInfo) extends Runnable with Closeable {
   private var _status: String = Job.STATUS_SUBMITTED
   private val timer: Timer = new Timer(true)
-  private var f: Future[Unit] = _
   private val lock = new Object
+
+  val jobId = jobInfo.jobId
+  val priority= jobInfo.priority
+  val submitTime = jobInfo.submitTime
+  val timeoutDuration = jobInfo.timeoutDuration
 
   timer.schedule(new TimerTask() {
     def run(): Unit = {
-      if(List(Job.STATUS_SUBMITTED, Job.STATUS_TAKE, Job.STATUS_START).contains(status))
+      if(List(Job.STATUS_SUBMITTED, Job.STATUS_TAKE, Job.STATUS_RUNNING).contains(status))
         timeout()
     }
   }, timeoutDuration)
@@ -48,11 +54,11 @@ abstract class Job(val jobId: String, val priority: String, val submitTime: Long
     val before = _status
     val chk =
       if(after == Job.STATUS_TAKE && before == Job.STATUS_SUBMITTED) true
-      else if(after == Job.STATUS_START && before == Job.STATUS_TAKE) true
-      else if(after == Job.STATUS_CANCELED && List(Job.STATUS_SUBMITTED, Job.STATUS_TAKE, Job.STATUS_START).contains(before)) true
-      else if(after == Job.STATUS_END && before == Job.STATUS_START) true
-      else if(after == Job.STATUS_FAILED && List(Job.STATUS_SUBMITTED, Job.STATUS_TAKE, Job.STATUS_START).contains(before)) true
-      else if(after == Job.STATUS_TIMEOUT && List(Job.STATUS_SUBMITTED, Job.STATUS_TAKE, Job.STATUS_START).contains(before)) true
+      else if(after == Job.STATUS_RUNNING && before == Job.STATUS_TAKE) true
+      else if(after == Job.STATUS_CANCELED && List(Job.STATUS_SUBMITTED, Job.STATUS_TAKE, Job.STATUS_RUNNING).contains(before)) true
+      else if(after == Job.STATUS_SUCCESS && before == Job.STATUS_RUNNING) true
+      else if(after == Job.STATUS_FAILED && List(Job.STATUS_SUBMITTED, Job.STATUS_TAKE, Job.STATUS_RUNNING).contains(before)) true
+      else if(after == Job.STATUS_TIMEOUT && List(Job.STATUS_SUBMITTED, Job.STATUS_TAKE, Job.STATUS_RUNNING).contains(before)) true
       else false
 
     if(chk) {
@@ -64,13 +70,13 @@ abstract class Job(val jobId: String, val priority: String, val submitTime: Long
 
   override def run(): Unit = {
     if (status == Job.STATUS_TAKE && !Thread.currentThread().isInterrupted) {
-      status(Job.STATUS_START)
+      status(Job.STATUS_RUNNING)
       try {
         publish(JobStartEvent(this))
 
         process()
 
-        status(Job.STATUS_END)
+        status(Job.STATUS_SUCCESS)
         publish(JobEndEvent(this))
       } catch {
         case e: Throwable =>
@@ -97,6 +103,8 @@ abstract class Job(val jobId: String, val priority: String, val submitTime: Long
     publish(JobTimeoutEvent(this))
     Thread.currentThread().interrupt()
   }
+
+  def jobStatus: JobStatus = JobStatus(jobId, priority, status)
 
   override def toString = s"Job($jobId, $priority, $submitTime, $timeoutDuration, $status)"
 }

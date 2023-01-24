@@ -30,11 +30,11 @@ class JobManager(poolSize: Int) {
     jobPoolExecutor.shutdown()
     jobList
       .all
-      .filter(job => List(Job.STATUS_SUBMITTED, Job.STATUS_TAKE, Job.STATUS_START).contains(job.status))
-      .foreach(_.cancel())
-    // ..
+      .filter(job => List(Job.STATUS_SUBMITTED, Job.STATUS_TAKE, Job.STATUS_RUNNING).contains(job.status))
+      .foreach(_.close())
   }
 
+  def jobStatusList: List[JobStatus] = jobList.all.map(_.jobStatus)
   def getJob(jobId: String): Option[Job] = jobList.all.find(_.jobId == jobId)
   def addJob(job: Job) = jobList.add(job)
   def cancelJob(jobId: String) = {

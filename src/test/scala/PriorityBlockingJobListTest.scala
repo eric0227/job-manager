@@ -10,13 +10,13 @@ class PriorityBlockingJobListTest extends AnyFunSuite {
   test("jobTake") {
 
     val list = new PriorityBlockingJobList()
-    list.add(new OwmsOutputCdrJob("job01", Job.PRIORITY_LOW, 0L, 100000L))
-    list.add(new OwmsOutputCdrJob("job02", Job.PRIORITY_HIGH, 3L, 100000L))
-    list.add(new OwmsOutputCdrJob("job03", Job.PRIORITY_HIGH, 4L, 100000L))
+    list.add(OwmsOutputCdrJob("job01", Job.PRIORITY_LOW, 0L, 100000L))
+    list.add(OwmsOutputCdrJob("job02", Job.PRIORITY_HIGH, 3L, 100000L))
+    list.add(OwmsOutputCdrJob("job03", Job.PRIORITY_HIGH, 4L, 100000L))
 
     Future {
       Thread.sleep(1200)
-      list.add(new OwmsOutputCdrJob("job04", Job.PRIORITY_HIGH, 5L, 100L))
+      list.add(OwmsOutputCdrJob("job04", Job.PRIORITY_HIGH, 5L, 100L))
     }
 
     while(list.size(_.status == Job.STATUS_SUBMITTED) >= 0) {
