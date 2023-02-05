@@ -33,13 +33,12 @@ class PriorityBlockingJobList {
       while (jobOpt.isEmpty) {
         //notEmpty.await()
         jobOpt = takeJob()
+        try{jobOpt.foreach(_.status(Job.STATUS_TAKE))}catch{ case e: Throwable => e.printStackTrace()}
         Thread.sleep(100)
       }
     } finally { //lock.unlock()
     }
-    val job = jobOpt.get
-    job.status(Job.STATUS_TAKE)
-    job
+    jobOpt.get
   }
 
 }

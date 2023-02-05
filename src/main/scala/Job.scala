@@ -1,4 +1,5 @@
 import java.io.Closeable
+import java.util.concurrent.atomic.AtomicReference
 import java.util.{Timer, TimerTask}
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.Future
@@ -14,12 +15,34 @@ object Job {
   val STATUS_SUCCESS = "SUCCESS"
   val STATUS_FAILED = "FAILED"
   val STATUS_TIMEOUT = "TIMEOUT"
+
+  case class State(code: String)
+  // object INITIALIZING extends State("01")
+ // case object ACTIVE extends State("02")
+
+  //protected val state = new AtomicReference[State](INITIALIZING)
+  //state.compareAndSet(INITIALIZING, ACTIVE)
+
+}
+
+abstract class JobState(val code: String)
+object JobState {
+  case object SUBMITTED extends JobState("01")
+  case object TAKE extends JobState("02")
+
+  def from(code: String): Option[JobState] = {
+    code.toUpperCase match {
+      case "SUBMITTED" => Some(SUBMITTED)
+      case "TAKE" => Some(TAKE)
+      case _ => None
+    }
+  }
 }
 
 case class JobStatus(jobId: String, priority: String, status: String)
 case class JobInfo(jobId: String, priority: String, submitTime: Long, timeoutDuration: Long)
 abstract class Job(val jobInfo: JobInfo) extends Runnable with Closeable {
-  private var _status: String = Job.STATUS_SUBMITTED
+  @volatile private var _status: String = Job.STATUS_SUBMITTED
   private val timer: Timer = new Timer(true)
   private val lock = new Object
 
@@ -65,7 +88,10 @@ abstract class Job(val jobInfo: JobInfo) extends Runnable with Closeable {
       _status = after
       publish(JobStatusUpdate(this, before, after))
       true
-    } else false
+    } else {
+      //false
+      throw new RuntimeException(jobInfo.toString + ":" + before + "->" + after)
+    }
   }
 
   override def run(): Unit = {
@@ -73,9 +99,7 @@ abstract class Job(val jobInfo: JobInfo) extends Runnable with Closeable {
       status(Job.STATUS_RUNNING)
       try {
         publish(JobStartEvent(this))
-
         process()
-
         status(Job.STATUS_SUCCESS)
         publish(JobEndEvent(this))
       } catch {

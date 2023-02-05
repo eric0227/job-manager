@@ -22,6 +22,7 @@ public abstract class Job implements Runnable, Closeable {
     private int timeout = 0; // seconds
     private String status;
 
+
     public Job(String jobId, String priority, long timestamp) {
         this.jobId = jobId;
         this.priority = priority;

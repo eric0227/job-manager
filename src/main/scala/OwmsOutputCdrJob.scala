@@ -24,9 +24,10 @@ class OwmsOutputCdrJob(jobInfo: JobInfo) extends Job(jobInfo) {
       println(line)
       if(line == null) stop = true
     }
+    close()
   }
 
-  override def close(): Unit = {
+  override def close(): Unit = synchronized {
     if(in != null) in.close()
     if(conn != null) conn.close()
     in = null

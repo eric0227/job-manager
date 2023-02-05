@@ -53,7 +53,4 @@ class JobJobManagerTest extends AnyFunSuite {
     m.jobStatusList.foreach(println)
     m.stopManager()
   }
-
 }
-
-
