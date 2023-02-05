@@ -1,21 +1,17 @@
 import org.junit.Test;
 
-public class SocketPipeTest2 {
+public class SocketReaderTest2 {
 
     @Test
     public void pipeTest() {
-        SocketPipe pipe = new SocketPipe();
-        pipe
+        SocketReader reader = new SocketReader();
+        reader
                 .stream()
+                .map(line -> line)
                 .zipWithIndex()
                 .foreach(t -> {
                     System.out.println(t);
-                    return "";
+                    return null;
                 });
-
-
-
-
-
     }
 }
